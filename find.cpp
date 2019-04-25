@@ -71,19 +71,18 @@ void parseArgs(Request& request, int argc, char* argv[]) {
 
             if (argument == "-inum") {
                 request.inodeNumber = numericValue;
+                request.inumNeeded = true;
             } else {
                 request.nlinkNumber = numericValue;
+                request.nlinksNeeded = true;
             }
 
         } else if (argument == "-name") {
             request.nameNeeded = true;
             request.name = value;
 
-        } else if (argument == "-path") {
-            request.nameNeeded = true;
-            request.name = value;
-
         } else if (argument == "-size") {
+            request.sizeNeeded = true;
 
             if (value[0] == '-') {
                 request.neededSizeArea = LESS;
