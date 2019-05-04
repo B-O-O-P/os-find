@@ -26,10 +26,10 @@ struct Request {
             nlinksNeeded = false,
             execNeeded = false;
 
-    ino_t inodeNumber;
+    ino_t inodeNumber{};
     std::string name, executionPath;
-    nlink_t nlinkNumber;
-    off_t size;
+    nlink_t nlinkNumber{};
+    off_t size{};
     sizeArea neededSizeArea = EMPTY;
 
 };
@@ -196,51 +196,49 @@ std::vector<std::string> bfs(const Request& request) {
     std::queue<BfsNode> q;
 
     DIR* root = opendir(request.filePath.c_str());
+    if (root == nullptr) {
+        printErr("Unable to access root directory");
+        exit(EXIT_FAILURE);
+    }
+
     q.push({root, request.filePath});
 
-    if (root != nullptr) {
-        while (!q.empty()) {
-            BfsNode current = q.front();
-            q.pop();
+    while (!q.empty()) {
+        BfsNode current = q.front();
+        q.pop();
 
-            while (dirent* file = readdir(current.dir)) {
-                struct stat sb{};
+        while (dirent* file = readdir(current.dir)) {
+            struct stat sb{};
 
-                char* fileName = file->d_name;
-                std::string filePath = current.path;
-                correctPath(filePath);
+            char* fileName = file->d_name;
+            if (fileName) {
 
-                if (fileName != nullptr) {
+                if (!(strcmp(fileName, ".") == 0 || strcmp(fileName, "..") == 0)) {
+                    std::string filePath = current.path;
+                    correctPath(filePath);
 
-                    if (!(strcmp(fileName, ".") == 0 || strcmp(fileName, "..") == 0)) {
-                        std::string fullPath = filePath + fileName;
-                        std::string name(fileName);
+                    std::string fullPath = filePath + fileName;
+                    std::string name(fileName);
 
-                        if (lstat(fullPath.c_str(), &sb) != 1) {
+                    if (lstat(fullPath.c_str(), &sb) != -1) {
 
-                            if (S_ISDIR(sb.st_mode)) {
-                                DIR* nextDirectory = opendir(fullPath.c_str());
+                        if (S_ISDIR(sb.st_mode)) {
+                            DIR* nextDirectory = opendir(fullPath.c_str());
 
-                                if (!nextDirectory) {
-                                    q.push({nextDirectory, fullPath});
-                                }
-                            } else if (checkStat(request, sb, name)) {
-                                result.push_back(fullPath);
+                            if (nextDirectory) {
+                                q.push({nextDirectory, fullPath});
                             }
-
-                        } else {
-                            printErr("Unable to access file");
+                        } else if (checkStat(request, sb, name)) {
+                            result.push_back(fullPath);
                         }
 
+                    } else {
+                        printErr("Unable to access file");
                     }
                 }
             }
-
-            closedir(current.dir);
         }
-
-    } else {
-        printErr("Unable to access root directory");
+        closedir(current.dir);
     }
 
     return result;
